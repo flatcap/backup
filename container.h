@@ -24,35 +24,50 @@
 #include "pointers.h"
 #include "backup.h"
 
+class Visitor;
+
 /**
  * class Container
  */
 class Container : public Backup
 {
 public:
-	Container (void);
-	Container (const Container &c);
-	virtual ~Container();
-
-	Container & operator= (const Container &c);
-
-	void * operator new (size_t size);
-	void operator delete (void *ptr);
-
 	static CPtr create (void);
+	Container (Container&& c);
+	virtual ~Container() = default;
 
-	virtual CPtr backup (void);
-	virtual void restore (void);
+	Container& operator= (const Container& c);
+	Container& operator= (Container&& c);
 
-	int get_size (void);
+	void swap (Container& c);
+	friend void swap (Container& lhs, Container& rhs);
+
+	virtual bool accept (Visitor& v);
+
+	CPtr copy (void);
+
+	int get_size (void) const;
 	int set_size (int value);
+
 	int add_child (CPtr child);
 	void remove_child (size_t index);
+
 	const std::vector<CPtr>& get_children (void);
 
 	std::string name;
+
+protected:
+	Container (void) = default;
+	Container (const Container& c);
+
+	virtual Container* clone (void);
+
+	bool visit_children (Visitor& v);
+
+	std::weak_ptr<Container> me;
+
 private:
-	int size;
+	int size = 0;
 	std::vector<CPtr> children;
 };
 

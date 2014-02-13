@@ -19,49 +19,7 @@
 #include <iostream>
 
 #include "partition.h"
-
-/**
- * Partition (default)
- */
-Partition::Partition (void) :
-	id(0)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-	name = "partition";
-}
-
-/**
- * Partition (copy)
- */
-Partition::Partition (const Partition &p) :
-	Container (p),
-	id (p.id)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-/**
- * ~Partition
- */
-Partition::~Partition()
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-
-/**
- * operator=
- */
-Partition &
-Partition::operator= (const Partition &p)
-{
-	Container::operator= (p);
-
-	id = p.id;
-
-	return *this;
-}
-
+#include "visitor.h"
 
 /**
  * create (static)
@@ -69,33 +27,106 @@ Partition::operator= (const Partition &p)
 PPtr
 Partition::create (void)
 {
-	PPtr p (new Partition);
+	Partition* p = new Partition();
 
-	return p;
+	p->name = "partition";
+
+	PPtr pp (p);
+
+	p->me = pp;	// keep a weak pointer to myself
+
+	return pp;
 }
 
 
 /**
- * backup
+ * Partition (copy)
  */
-CPtr
-Partition::backup (void)
+Partition::Partition (const Partition& p) :
+	Container (p),
+	id (p.id)
 {
-	//Container::backup();
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-
-	CPtr old (new Partition (*this));
-	return old;
+	std::cout << "Partition ctor (copy): " << p.id << std::endl;
 }
 
 /**
- * restore
+ * Partition (move)
+ */
+Partition::Partition (Partition&& p)
+{
+	std::cout << "Partition ctor (move): " << p.id << std::endl;
+
+	swap (p);
+}
+
+
+/**
+ * operator= (copy)
+ */
+Partition&
+Partition::operator= (const Partition& p)
+{
+	std::cout << "Partition assign (copy): " << id << ", " << p.id << std::endl;
+	Container::operator= (p);
+
+	id = p.id;
+
+	return *this;
+}
+
+/**
+ * operator= (move)
+ */
+Partition&
+Partition::operator= (Partition&& p)
+{
+	std::cout << "Partition assign (move): " << id << ", " << p.id << std::endl;
+	swap (p);
+	return *this;
+}
+
+
+/**
+ * swap (member)
  */
 void
-Partition::restore (void)
+Partition::swap (Partition& p)
 {
-	Container::restore();
+	std::cout << "Partition swap (member): " << id << ", " << p.id << std::endl;
+	Container::swap (p);
+	std::swap (id, p.id);
+}
+
+/**
+ * swap (global)
+ */
+void swap (Partition& lhs, Partition& rhs)
+{
+	std::cout << "Partition swap (global): " << lhs.id << ", " << rhs.id << std::endl;
+	lhs.swap (rhs);
+}
+
+
+/**
+ * accept
+ */
+bool
+Partition::accept (Visitor& v)
+{
+	PPtr p = std::dynamic_pointer_cast<Partition> (me.lock());
+	if (!v.visit (p))
+		return false;
+	return visit_children (v);
+}
+
+/**
+ * clone
+ */
+Partition*
+Partition::clone (void)
+{
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	return new Partition (*this);
 }
 
 
@@ -103,7 +134,7 @@ Partition::restore (void)
  * get_id
  */
 int
-Partition::get_id (void)
+Partition::get_id (void) const
 {
 	return id;
 }

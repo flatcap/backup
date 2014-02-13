@@ -27,19 +27,26 @@
 class Filesystem : public Container
 {
 public:
-	Filesystem (void);
-	Filesystem (const Filesystem &f);
-	virtual ~Filesystem();
-
-	Filesystem & operator= (const Filesystem &f);
-
 	static FPtr create (void);
+	Filesystem (Filesystem&& f);
+	virtual ~Filesystem() = default;
 
-	virtual CPtr backup (void);
-	virtual void restore (void);
+	Filesystem& operator= (const Filesystem& f);
+	Filesystem& operator= (Filesystem&& f);
 
-	std::string get_label (void);
-	std::string set_label (const std::string &value);
+	void swap (Filesystem& f);
+	friend void swap (Filesystem& lhs, Filesystem& rhs);
+
+	virtual bool accept (Visitor& v);
+
+	std::string get_label (void) const;
+	std::string set_label (const std::string& value);
+
+protected:
+	Filesystem (void) = default;
+	Filesystem (const Filesystem& f);
+
+	virtual Filesystem* clone (void);
 
 private:
 	std::string label;

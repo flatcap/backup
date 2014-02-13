@@ -27,11 +27,14 @@
 class Backup
 {
 public:
-	Backup();
-	Backup (const Backup &b);
-	virtual ~Backup();
+	Backup (Backup&& b);
+	virtual ~Backup() = default;
 
-	Backup & operator= (const Backup &b);
+	Backup& operator= (const Backup& b);
+	Backup& operator= (Backup&& b);
+
+	void swap (Backup& b);
+	friend void swap (Backup& lhs, Backup& rhs);
 
 	virtual CPtr backup (void);
 	virtual void restore (void);
@@ -39,10 +42,13 @@ public:
 	int get_seqnum (void);
 
 protected:
+	Backup (void);
+	Backup (const Backup& b);
+
 	void changed (void);
 
 private:
-	int seqnum;
+	int seqnum = 1;
 };
 
 

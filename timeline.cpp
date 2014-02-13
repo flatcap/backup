@@ -18,10 +18,11 @@
 
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "timeline.h"
 #include "container.h"
-#include "dot.h"
+#include "filesystem.h"
 #include "utils.h"
 
 /**
@@ -43,7 +44,7 @@ Timeline::~Timeline()
  * push
  */
 void
-Timeline::push (const Action &action)
+Timeline::push (const Action& action)
 {
 	timeline.push_back (action);
 }
@@ -60,11 +61,12 @@ Timeline::pop (void)
 }
 
 
+#if 0
 /**
  * backup
  */
 CPtr
-Timeline::backup (const CPtr &root, const std::string &desc)
+Timeline::backup (const CPtr& root, const std::string& desc)
 {
 	CPtr copy = root->backup();
 
@@ -85,9 +87,21 @@ Timeline::restore (void)
 
 	std::tie (current, old, desc) = pop();
 
-	*current = *old;	// copy the objects, not the smart pointers
+	//XXX *current = *old;	// copy the objects, not the smart pointers
 
 	current->restore();
+}
+
+#endif
+
+/**
+ * backup
+ */
+void
+Timeline::backup (CPtr& orig, CPtr& work, const std::string& desc)
+{
+	std::swap(orig, work);
+	push (Action(orig, work, desc));
 }
 
 
@@ -109,6 +123,53 @@ Timeline::dump (void)
 	}
 	std::cout << std::endl;
 }
+
+
+/**
+ * dump_dot_small
+ */
+std::string
+dump_dot_small (const CPtr& c)
+{
+	// dump an instance
+	// for each child
+	//   dump child instance
+	// link this and children
+
+	std::stringstream dot;
+	std::string name;
+
+	name = c->name;
+	if (name.empty())
+		name = "c";
+
+	dot << "\n";
+	dot << "// " << c << "\n";
+
+	std::string colour;
+	     if (name == "disk")       colour = "#ffc0c0";	// red
+	else if (name == "partition")  colour = "#d0d080";	// yellow
+	else if (name == "filesystem") colour = "#80c080";	// green
+	else                           colour = "#c0c0c0";	// grey
+
+	dot << "obj_" << c << " [fillcolor=\"" << colour << "\",label=<<table cellspacing=\"0\" border=\"0\"><tr><td>\n";
+	dot << "<font point-size=\"16\"><b>" << (char)toupper(name[0]) << "</b></font> (" << c->get_seqnum() << ")</td></tr><tr><td>\n";
+	dot << "<font point-size=\"10\">" << c << "</font></td></tr>";
+	if (name == "filesystem") {
+		FPtr f = std::dynamic_pointer_cast<Filesystem> (c);
+		dot << "<tr><td>"+f->get_label()+"</td></tr>";
+	}
+	dot << "</table>\n";
+	dot << ">];\n";
+
+	for (auto const& child : c->get_children()) {
+		dot << dump_dot_small (child);
+		dot << "obj_" << c << " -> obj_" << child << ";\n";
+	}
+
+	return dot.str();
+}
+
 
 /**
  * display
@@ -155,7 +216,7 @@ Timeline::display (void)
 	int offset = 0;
 	int screen_x = -1-(offset*400);
 
-	std::string command = "dot -Tpng | display -title \"timeline:" + std::to_string(count-1) + "\" -gravity NorthEast -geometry " + std::to_string(screen_x) + "+0 -resize 80% - &";
+	std::string command = "dot -Tpng | display -title \"timeline:" + std::to_string(count-1) + "\" -gravity NorthEast -geometry " + std::to_string(screen_x) + "+0 -resize 80% -& ";
 
 	execute_command (command, input);
 }

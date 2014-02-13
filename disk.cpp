@@ -19,48 +19,7 @@
 #include <iostream>
 
 #include "disk.h"
-
-/**
- * Disk (default)
- */
-Disk::Disk (void)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-	name = "disk";
-}
-
-/**
- * Disk (copy)
- */
-Disk::Disk (const Disk &d) :
-	Container (d),
-	device (d.device)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-/**
- * ~Disk
- */
-Disk::~Disk()
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-
-/**
- * operator=
- */
-Disk &
-Disk::operator= (const Disk &d)
-{
-	Container::operator= (d);
-
-	device = d.device;
-
-	return *this;
-}
-
+#include "visitor.h"
 
 /**
  * create (static)
@@ -68,33 +27,105 @@ Disk::operator= (const Disk &d)
 DPtr
 Disk::create (void)
 {
-	DPtr d (new Disk);
+	Disk* d = new Disk();
 
-	return d;
+	d->name = "disk";
+
+	DPtr dp (d);
+
+	d->me = dp;	// keep a weak pointer to myself
+
+	return dp;
 }
 
 
 /**
- * backup
+ * Disk (copy)
  */
-CPtr
-Disk::backup (void)
+Disk::Disk (const Disk& d) :
+	Container (d),
+	device (d.device)
 {
-	//Container::backup();
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-
-	CPtr old (new Disk (*this));
-	return old;
+	std::cout << "Disk ctor (copy): " << d.device << std::endl;
 }
 
 /**
- * restore
+ * Disk (move)
+ */
+Disk::Disk (Disk&& d)
+{
+	std::cout << "Disk ctor (move): " << d.device << std::endl;
+	swap (d);
+}
+
+
+/**
+ * operator= (copy)
+ */
+Disk&
+Disk::operator= (const Disk& d)
+{
+	std::cout << "Disk assign (copy): "<< device << ", " << d.device << std::endl;
+	Container::operator= (d);
+
+	device = d.device;
+
+	return *this;
+}
+
+/**
+ * operator= (move)
+ */
+Disk&
+Disk::operator= (Disk&& d)
+{
+	std::cout << "Disk assign (move): "<< device << ", " << d.device << std::endl;
+	swap (d);
+	return *this;
+}
+
+
+/**
+ * swap (member)
  */
 void
-Disk::restore (void)
+Disk::swap (Disk& d)
 {
-	Container::restore();
+	std::cout << "Disk swap (member): " << device << ", " << d.device << std::endl;
+	Container::swap (d);
+	std::swap (device, d.device);
+}
+
+/**
+ * swap (global)
+ */
+void swap (Disk& lhs, Disk& rhs)
+{
+	std::cout << "Disk swap (global): " << lhs.device << ", " << rhs.device << std::endl;
+	lhs.swap (rhs);
+}
+
+
+/**
+ * accept
+ */
+bool
+Disk::accept (Visitor& v)
+{
+	DPtr d = std::dynamic_pointer_cast<Disk> (me.lock());
+	if (!v.visit (d))
+		return false;
+	return visit_children (v);
+}
+
+/**
+ * clone
+ */
+Disk*
+Disk::clone (void)
+{
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	return new Disk (*this);
 }
 
 
@@ -102,7 +133,7 @@ Disk::restore (void)
  * get_device
  */
 std::string
-Disk::get_device (void)
+Disk::get_device (void) const
 {
 	return device;
 }

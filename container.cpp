@@ -19,88 +19,7 @@
 #include <iostream>
 
 #include "container.h"
-
-/**
- * Container (default)
- */
-Container::Container (void) :
-	size(0)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-/**
- * Container (copy)
- */
-Container::Container (const Container &c) :
-	Backup (c),
-	name (c.name),
-	size (c.size)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-
-	for (auto child : c.children) {
-		children.push_back (child->backup());
-	}
-}
-
-/**
- * ~Container
- */
-Container::~Container()
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-
-/**
- * operator=
- */
-Container &
-Container::operator= (const Container &c)
-{
-	Backup::operator= (c);
-
-	name     = c.name;
-	size     = c.size;
-	children = c.children;
-
-	return *this;
-}
-
-
-/**
- * new
- */
-void *
-Container::operator new (size_t size)
-{
-	Container *c = (Container*) ::operator new (size);
-
-#if 0
-	std::cout << "new object " << c << std::endl;
-#endif
-
-	return c;
-}
-
-/**
- * delete
- */
-void
-Container::operator delete (void *ptr)
-{
-	if (!ptr)
-		return;
-
-#if 0
-	Container *c = (Container *) (ptr);
-	std::cout << "delete object " << c << std::endl;
-#endif
-
-	::operator delete (ptr);
-}
-
+#include "visitor.h"
 
 /**
  * create (static)
@@ -108,38 +27,152 @@ Container::operator delete (void *ptr)
 CPtr
 Container::create (void)
 {
-	CPtr c (new Container);
+	Container* c = new Container();
 
-	return c;
+	c->name = "container";
+
+	CPtr cp (c);
+
+	c->me = cp;	// keep a weak pointer to myself
+
+	return cp;
 }
 
 
 /**
- * backup
+ * Container (copy)
  */
-CPtr
-Container::backup (void)
+Container::Container (const Container& c) :
+	Backup (c),
+	name (c.name),
+	size (c.size)
+	//don't copy 'me'
 {
-	//Backup::backup();
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	std::cout << "Container ctor (copy): " << c.size << std::endl;
 
-	CPtr old (new Container (*this));
-	return old;
+	for (auto child : c.children) {
+		children.push_back (child->copy());
+	}
 }
 
 /**
- * restore
+ * Container (move)
+ */
+Container::Container (Container&& c)
+{
+	std::cout << "Container ctor (move): " << c.size << std::endl;
+	swap (c);
+}
+
+
+/**
+ * operator= (copy)
+ */
+Container&
+Container::operator= (const Container& c)
+{
+	std::cout << "Container assign (copy): " << size << ", " << c.size << std::endl;
+	Backup::operator= (c);
+
+	name     = c.name;
+	size     = c.size;
+	children = c.children;
+	//don't copy 'me'
+
+	return *this;
+}
+
+/**
+ * operator= (move)
+ */
+Container&
+Container::operator= (Container&& c)
+{
+	std::cout << "Container assign (move): " << size << ", " << c.size << std::endl;
+	swap (c);
+	return *this;
+}
+
+
+/**
+ * swap (member)
  */
 void
-Container::restore (void)
+Container::swap (Container& c)
 {
-	Backup::restore();
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	std::cout << "Container swap (member): " << size << ", " << c.size << std::endl;
+	std::swap (size, c.size);
+	std::swap (children, c.children);
+}
 
-	changed();
+/**
+ * swap (global)
+ */
+void swap (Container& lhs, Container& rhs)
+{
+	std::cout << "Container swap (global): " << lhs.size << ", " << rhs.size << std::endl;
+	lhs.swap (rhs);
+}
+
+
+/**
+ * visit_children
+ */
+bool
+Container::visit_children (Visitor& v)
+{
+	CPtr c = me.lock();
+	if (!v.visit_enter (c))
+		return false;
+
 	for (auto c : children) {
-		c->restore();
+		if (!c->accept (v))
+			return false;
 	}
+
+	if (!v.visit_leave())
+		return false;
+
+	return true;
+}
+
+/**
+ * accept
+ */
+bool
+Container::accept (Visitor& v)
+{
+	CPtr c = me.lock();
+	if (!v.visit (c))
+		return false;
+	return visit_children (v);
+}
+
+/**
+ * clone
+ */
+Container*
+Container::clone (void)
+{
+	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	return new Container (*this);
+}
+
+
+/**
+ * copy
+ */
+CPtr
+Container::copy (void)
+{
+	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	Container *c = clone();
+
+	CPtr cp (c);
+
+	c->me = cp;	// keep a weak pointer to myself
+
+	return cp;
 }
 
 
@@ -147,7 +180,7 @@ Container::restore (void)
  * get_size
  */
 int
-Container::get_size (void)
+Container::get_size (void) const
 {
 	return size;
 }
@@ -163,6 +196,7 @@ Container::set_size (int value)
 	changed();
 	return old;
 }
+
 
 /**
  * add_child
@@ -188,6 +222,7 @@ Container::remove_child (size_t index)
 	changed();
 }
 
+
 /**
  * get_children
  */
@@ -196,3 +231,5 @@ Container::get_children (void)
 {
 	return children;
 }
+
+

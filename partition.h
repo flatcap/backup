@@ -27,22 +27,29 @@
 class Partition : public Container
 {
 public:
-	Partition (void);
-	Partition (const Partition &p);
-	virtual ~Partition();
-
-	Partition & operator= (const Partition &p);
-
 	static PPtr create (void);
+	Partition (Partition&& p);
+	virtual ~Partition() = default;
 
-	virtual CPtr backup (void);
-	virtual void restore (void);
+	Partition& operator= (const Partition& p);
+	Partition& operator= (Partition&& p);
 
-	int get_id (void);
+	void swap (Partition& p);
+	friend void swap (Partition& lhs, Partition& rhs);
+
+	virtual bool accept (Visitor& v);
+
+	int get_id (void) const;
 	int set_id (int value);
 
+protected:
+	Partition (void) = default;
+	Partition (const Partition& p);
+
+	virtual Partition* clone (void);
+
 private:
-	int id;
+	int id = 0;
 };
 
 

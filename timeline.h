@@ -36,11 +36,14 @@ public:
 	Timeline (void);
 	virtual ~Timeline();
 
-	void push (const Action &action);
+	void push (const Action& action);
 	Action pop (void);
 
-	CPtr backup (const CPtr &root, const std::string &desc);
+#if 0
+	CPtr backup (const CPtr& root, const std::string& desc);
 	void restore (void);
+#endif
+	void backup (CPtr& orig, CPtr& work, const std::string& desc);
 
 	void dump (void);
 	void display (void);

@@ -19,48 +19,7 @@
 #include <iostream>
 
 #include "filesystem.h"
-
-/**
- * Filesystem (default)
- */
-Filesystem::Filesystem (void)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-	name = "filesystem";
-}
-
-/**
- * Filesystem (copy)
- */
-Filesystem::Filesystem (const Filesystem &f) :
-	Container (f),
-	label (f.label)
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-/**
- * ~Filesystem
- */
-Filesystem::~Filesystem()
-{
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-}
-
-
-/**
- * operator=
- */
-Filesystem &
-Filesystem::operator= (const Filesystem &f)
-{
-	Container::operator= (f);
-
-	label = f.label;
-
-	return *this;
-}
-
+#include "visitor.h"
 
 /**
  * create (static)
@@ -68,33 +27,104 @@ Filesystem::operator= (const Filesystem &f)
 FPtr
 Filesystem::create (void)
 {
-	FPtr f (new Filesystem);
+	Filesystem* f = new Filesystem();
 
-	return f;
+	f->name = "filesystem";
+
+	FPtr fp (f);
+
+	f->me = fp;	// keep a weak pointer to myself
+
+	return fp;
 }
 
 
 /**
- * backup
+ * Filesystem (copy)
  */
-CPtr
-Filesystem::backup (void)
+Filesystem::Filesystem (const Filesystem& f) :
+	Container (f),
+	label (f.label)
 {
-	//Container::backup();
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
-
-	CPtr old (new Filesystem (*this));
-	return old;
+	std::cout << "Filesystem ctor (copy): " << f.label << std::endl;
 }
 
 /**
- * restore
+ * Filesystem (move)
+ */
+Filesystem::Filesystem (Filesystem&& f)
+{
+	std::cout << "Filesystem ctor (move): " << f.label << std::endl;
+	swap (f);
+}
+
+
+/**
+ * operator= (copy)
+ */
+Filesystem&
+Filesystem::operator= (const Filesystem& f)
+{
+	std::cout << "Filesystem assign (copy): " << label << ", " << f.label << std::endl;
+	Container::operator= (f);
+
+	label = f.label;
+	return *this;
+}
+
+/**
+ * operator= (move)
+ */
+Filesystem&
+Filesystem::operator= (Filesystem&& f)
+{
+	std::cout << "Filesystem assign (move): " << label << ", " << f.label << std::endl;
+	swap (f);
+	return *this;
+}
+
+
+/**
+ * swap (member)
  */
 void
-Filesystem::restore (void)
+Filesystem::swap (Filesystem& f)
 {
-	Container::restore();
+	std::cout << "Filesystem swap (member): " << label << ", " << f.label << std::endl;
+	Container::swap (f);
+	std::swap (label, f.label);
+}
+
+/**
+ * swap (global)
+ */
+void swap (Filesystem& lhs, Filesystem& rhs)
+{
+	std::cout << "Filesystem swap (global): " << lhs.label << ", " << rhs.label << std::endl;
+	lhs.swap (rhs);
+}
+
+
+/**
+ * accept
+ */
+bool
+Filesystem::accept (Visitor& v)
+{
+	FPtr f = std::dynamic_pointer_cast<Filesystem> (me.lock());
+	if (!v.visit (f))
+		return false;
+	return visit_children (v);
+}
+
+/**
+ * clone
+ */
+Filesystem*
+Filesystem::clone (void)
+{
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	return new Filesystem (*this);
 }
 
 
@@ -102,7 +132,7 @@ Filesystem::restore (void)
  * get_label
  */
 std::string
-Filesystem::get_label (void)
+Filesystem::get_label (void) const
 {
 	return label;
 }
@@ -111,7 +141,7 @@ Filesystem::get_label (void)
  * set_label
  */
 std::string
-Filesystem::set_label (const std::string &value)
+Filesystem::set_label (const std::string& value)
 {
 	std::string old = label;
 	label = value;

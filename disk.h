@@ -27,19 +27,26 @@
 class Disk : public Container
 {
 public:
-	Disk (void);
-	Disk (const Disk &d);
-	virtual ~Disk();
-
-	Disk & operator= (const Disk &d);
-
 	static DPtr create (void);
+	Disk (Disk&& d);
+	virtual ~Disk() = default;
 
-	virtual CPtr backup (void);
-	virtual void restore (void);
+	Disk& operator= (const Disk& d);
+	Disk& operator= (Disk&& d);
 
-	std::string get_device (void);
-	std::string set_device (std::string value);
+	void swap (Disk& d);
+	friend void swap (Disk& lhs, Disk& rhs);
+
+	virtual bool accept (Visitor& v);
+
+	std::string get_device (void) const;
+	std::string set_device (const std::string value);
+
+protected:
+	Disk (void) = default;
+	Disk (const Disk& d);
+
+	virtual Disk* clone (void);
 
 private:
 	std::string device;
